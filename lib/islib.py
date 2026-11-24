@@ -35,7 +35,10 @@ class IS:
             if e.code in ok:
                 return json.loads(txt) if txt.strip() else {}
             if e.code == 401:
-                raise SystemExit(f"{self.base} : authentification refusée (utilisateur ou mot de passe incorrect)")
+                raise SystemExit(f"{self.base} : authentification refusée (HTTP 401) sur {method} {url}\n"
+                                 f"  réponse IS : {txt[:300] or '(vide)'}\n"
+                                 f"  vérifiez l'utilisateur, le mot de passe, un éventuel verrouillage du compte, "
+                                 f"et que l'auth basic est autorisée sur les API de cette instance")
             raise RuntimeError(f"{method} {url} -> {e.code}: {txt[:600]}")
 
     get = lambda s, p, **k: s.req("GET", p, **k)
@@ -68,6 +71,9 @@ def log(*a):
 def credentials(url):
     """Identifiants admin : IS_USER / IS_PASSWORD s'ils sont définis, sinon saisie interactive (mot de passe masqué)."""
     user = os.environ.get("IS_USER")
+    for v in ("IS_USER", "IS_PASSWORD"):
+        if os.environ.get(v):
+            sys.stderr.write(f"{v} lu dans l'environnement (unset {v} pour une saisie interactive)\n")
     if not user:
         sys.stderr.write(f"Utilisateur pour {url} [admin] : ")
         sys.stderr.flush()
