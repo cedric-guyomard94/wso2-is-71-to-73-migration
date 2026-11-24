@@ -1,0 +1,96 @@
+diff --git a/iamctl/pkg/apiResources/apiResourceUtils.go b/iamctl/pkg/apiResources/apiResourceUtils.go
+index bb13ac3..cfb1a9d 100644
+--- a/iamctl/pkg/apiResources/apiResourceUtils.go
++++ b/iamctl/pkg/apiResources/apiResourceUtils.go
+@@ -24,6 +24,7 @@ import (
+ 	"io/ioutil"
+ 	"path/filepath"
+ 	"strconv"
++	"strings"
+ 
+ 	"github.com/wso2-extensions/identity-tools-cli/iamctl/pkg/utils"
+ )
+@@ -91,11 +92,23 @@ func getDeployedApiResourceIdentifiers(resources []ApiResource) []string {
+ 
+ 	var identifiers []string
+ 	for _, r := range resources {
+-		identifiers = append(identifiers, r.Identifier)
++		identifiers = append(identifiers, identifierToFileName(r.Identifier))
+ 	}
+ 	return identifiers
+ }
+ 
++// Les identifiants d'API resources sont souvent des URLs (https://api.x/y) :
++// le "/" est encodé en "%2F" dans le nom de fichier (même convention que pour les rôles).
++func identifierToFileName(identifier string) string {
++
++	return strings.ReplaceAll(identifier, "/", "%2F")
++}
++
++func fileNameToIdentifier(fileName string) string {
++
++	return strings.ReplaceAll(fileName, "%2F", "/")
++}
++
+ func getApiResourceId(identifier string, list []ApiResource) string {
+ 
+ 	for _, r := range list {
+diff --git a/iamctl/pkg/apiResources/export.go b/iamctl/pkg/apiResources/export.go
+index 521bdae..c7742c0 100644
+--- a/iamctl/pkg/apiResources/export.go
++++ b/iamctl/pkg/apiResources/export.go
+@@ -97,7 +97,7 @@ func exportApiResource(resourceId string, resourceIdentifier string, outputDirPa
+ 	}
+ 
+ 	format := utils.FormatFromString(formatString)
+-	exportedFileName := utils.GetExportedFilePath(outputDirPath, resourceIdentifier, format)
++	exportedFileName := utils.GetExportedFilePath(outputDirPath, identifierToFileName(resourceIdentifier), format)
+ 
+ 	keywordMapping := getApiResourceKeywordMapping(resourceIdentifier)
+ 	modifiedResource, err := utils.ProcessExportedData(resourceMap, exportedFileName, format, keywordMapping, utils.API_RESOURCES)
+diff --git a/iamctl/pkg/apiResources/import.go b/iamctl/pkg/apiResources/import.go
+index c892629..319c504 100644
+--- a/iamctl/pkg/apiResources/import.go
++++ b/iamctl/pkg/apiResources/import.go
+@@ -69,7 +69,7 @@ func ImportAll(inputDirPath string) {
+ 	for _, file := range files {
+ 		apiResFilePath := filepath.Join(importFilePath, file.Name())
+ 		fileInfo := utils.GetFileInfo(apiResFilePath)
+-		resourceName := fileInfo.ResourceName
++		resourceName := fileNameToIdentifier(fileInfo.ResourceName)
+ 
+ 		if resourceName == utils.API_RESOURCE_SCOPES.String() {
+ 			continue
+@@ -179,7 +179,7 @@ func removeDeletedDeployedApiResources(localFiles []os.FileInfo, deployedResourc
+ 
+ 	localResourceNames := make(map[string]struct{})
+ 	for _, file := range localFiles {
+-		resourceName := utils.GetFileInfo(file.Name()).ResourceName
++		resourceName := fileNameToIdentifier(utils.GetFileInfo(file.Name()).ResourceName)
+ 		localResourceNames[resourceName] = struct{}{}
+ 	}
+ 
+diff --git a/iamctl/pkg/organizations/organizationUtils.go b/iamctl/pkg/organizations/organizationUtils.go
+index 9d50245..6f17fc5 100644
+--- a/iamctl/pkg/organizations/organizationUtils.go
++++ b/iamctl/pkg/organizations/organizationUtils.go
+@@ -138,7 +138,8 @@ func getOrganizationKeywordMapping(resourceName string) map[string]interface{} {
+ func getOrgId(resourceName string, list []organization) string {
+ 
+ 	for _, o := range list {
+-		if getOrgResourceName(o) == resourceName {
++		// correspondance aussi par nom (fichiers issus d'un IS sans orgHandle)
++		if getOrgResourceName(o) == resourceName || o.Name == resourceName {
+ 			return o.Id
+ 		}
+ 	}
+@@ -285,7 +286,8 @@ func patchOrganizationStatus(orgId string, rawStatus interface{}) error {
+ func getOrgResourceName(org organization) string {
+ 
+ 	// Uses org name as the resource identifier in Asgardeo, org handle for IS.
+-	if utils.SERVER_CONFIGS.ServerVersion == "" {
++	// IS 7.1 ne renvoie pas d'orgHandle : repli sur le nom (sinon fichier ".yml" écrasé).
++	if utils.SERVER_CONFIGS.ServerVersion == "" || org.OrgHandle == "" {
+ 		return org.Name
+ 	}
+ 	return org.OrgHandle

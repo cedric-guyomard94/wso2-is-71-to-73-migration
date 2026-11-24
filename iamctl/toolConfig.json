@@ -1,0 +1,7 @@
+{
+  "INCLUDE_ONLY": ["Claims", "IdentityProviders", "ApiResources", "Applications", "Roles", "OidcScopes", "EmailTemplates"],
+  "EXCLUDE_SECRETS": false,
+  "APPLICATIONS":       { "EXCLUDE": ["Console", "My Account", "iamctl-mgmt", "Resident"] },
+  "IDENTITY_PROVIDERS": { "EXCLUDE": ["LOCAL"] },
+  "ROLES":              { "EXCLUDE": ["admin", "Administrator", "everyone", "system", "MON-ROLE-ORGANISATION"] }
+}

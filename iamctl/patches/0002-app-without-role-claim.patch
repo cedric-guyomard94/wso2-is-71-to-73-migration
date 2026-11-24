@@ -1,0 +1,15 @@
+diff --git a/iamctl/pkg/applications/applicationUtils.go b/iamctl/pkg/applications/applicationUtils.go
+index ec46de7..828fcef 100644
+--- a/iamctl/pkg/applications/applicationUtils.go
++++ b/iamctl/pkg/applications/applicationUtils.go
+@@ -449,6 +449,10 @@ func removeRoleClaimUri(appMap map[string]interface{}) error {
+ 	if !ok {
+ 		return fmt.Errorf("unexpected format for role in claimConfiguration")
+ 	}
++	// apps en dialecte CUSTOM (ex. SAML) : pas de claim de rôle -> rien à nettoyer
++	if _, exists := role["claim"]; !exists {
++		return nil
++	}
+ 	claim, ok := role["claim"].(map[string]interface{})
+ 	if !ok {
+ 		return fmt.Errorf("unexpected format for claim in role")

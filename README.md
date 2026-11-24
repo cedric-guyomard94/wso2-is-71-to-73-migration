@@ -36,6 +36,11 @@ Code retour non nul en cas d'erreur.
 `additionalSpProperties`), `implicitAssociation` désactivée, claims d'IdP à `uri: null`,
 claim `http://wso2.org/claims/role` supprimée, certificat d'IdP déjà présent.
 
+## Variante IAMCTL
+
+Une recette équivalente avec l'outil officiel IAMCTL (patché) est dans [`iamctl/`](iamctl/README.md).
+Elle perd les mappings par user store des claims système.
+
 ## Prérequis
 
 - Les **user stores** ne sont pas migrés : ceux référencés par les mappings de claims doivent exister sur la cible.
