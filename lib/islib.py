@@ -1,5 +1,5 @@
 """Mini client REST pour WSO2 IS (stdlib uniquement)."""
-import base64, json, ssl, sys, time, urllib.error, urllib.parse, urllib.request
+import base64, getpass, json, os, ssl, sys, time, urllib.error, urllib.parse, urllib.request
 
 _CTX = ssl.create_default_context()
 _CTX.check_hostname = False
@@ -34,6 +34,8 @@ class IS:
             txt = e.read().decode()
             if e.code in ok:
                 return json.loads(txt) if txt.strip() else {}
+            if e.code == 401:
+                raise SystemExit(f"{self.base} : authentification refusée (utilisateur ou mot de passe incorrect)")
             raise RuntimeError(f"{method} {url} -> {e.code}: {txt[:600]}")
 
     get = lambda s, p, **k: s.req("GET", p, **k)
@@ -61,3 +63,16 @@ class IS:
 
 def log(*a):
     print(*a, file=sys.stderr, flush=True)
+
+
+def credentials(url):
+    """Identifiants admin : IS_USER / IS_PASSWORD s'ils sont définis, sinon saisie interactive (mot de passe masqué)."""
+    user = os.environ.get("IS_USER")
+    if not user:
+        sys.stderr.write(f"Utilisateur pour {url} [admin] : ")
+        sys.stderr.flush()
+        user = sys.stdin.readline().strip() or "admin"
+    pwd = os.environ.get("IS_PASSWORD") or getpass.getpass(f"Mot de passe de {user} : ")
+    if not pwd:
+        sys.exit("mot de passe vide")
+    return user, pwd

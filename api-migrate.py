@@ -5,7 +5,8 @@ par les API REST de management, sans IAMCTL. Python 3 stdlib uniquement.
   ./api-migrate.py export <src_url> <bundle.json>      ne contacte que la source
   ./api-migrate.py import <bundle.json> <dst_url>      ne contacte que la cible (idempotent)
 
-Auth : basic (IS_USER / IS_PASSWORD, défaut admin/admin). Le bundle contient des secrets (client secrets).
+Auth : basic. Utilisateur et mot de passe demandés à l'exécution (mot de passe masqué) ;
+IS_USER / IS_PASSWORD restent utilisables pour l'automatisation. Le bundle contient des secrets (client secrets).
 
 Périmètre : claims locales custom (+ mappings par user store), dialectes et claims externes, scopes OIDC,
 API resources, IdP fédérés, trusted token issuers, applications (OIDC / SAML / M2M, client_id et secret
@@ -14,7 +15,7 @@ Les user stores ne sont pas migrés : ceux référencés par les claims doivent 
 """
 import base64, copy, json, os, sys, time
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-from islib import IS
+from islib import IS, credentials
 
 API = "/api/server/v1"
 SYSTEM_APPS = {"Console", "My Account", "iamctl-mgmt"}
@@ -34,7 +35,7 @@ def is_system_claim(c):
 
 # =================================================================================== EXPORT
 def export(src_url, out):
-    s = IS(src_url, os.environ.get("IS_USER", "admin"), os.environ.get("IS_PASSWORD", "admin"))
+    s = IS(src_url, *credentials(src_url))
     b = {"source": src_url, "exported_at": time.strftime("%Y-%m-%d %H:%M:%S")}
 
     # --- claims
@@ -119,7 +120,7 @@ def export(src_url, out):
 class Import:
     def __init__(self, bundle, dst_url):
         self.b = json.load(open(bundle, encoding="utf-8"))
-        self.s = IS(dst_url, os.environ.get("IS_USER", "admin"), os.environ.get("IS_PASSWORD", "admin"))
+        self.s = IS(dst_url, *credentials(dst_url))
         self.stats, self.errors, self.warnings = {}, [], []
 
     def ok(self, kind, action):

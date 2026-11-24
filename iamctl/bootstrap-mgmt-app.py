@@ -4,18 +4,18 @@ serverConfig.json (client_id / secret de l'app), toolConfig.json et keywordConfi
 
 usage: bootstrap-mgmt-app.py <base_url> <env_dir> <server_version> [app_name]
        ex. ./bootstrap-mgmt-app.py https://is71.example:9443 configs/is71 7.1.0
-Auth : basic (IS_USER / IS_PASSWORD, défaut admin/admin).
+Auth : basic. Utilisateur et mot de passe demandés à l'exécution (ou IS_USER / IS_PASSWORD).
 """
 import json, os, shutil, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "lib"))
-from islib import IS, log
+from islib import IS, credentials, log
 
 if len(sys.argv) < 4:
     sys.exit(__doc__)
 base, env_dir, version = sys.argv[1:4]
 app_name = sys.argv[4] if len(sys.argv) > 4 else "iamctl-mgmt"
-s = IS(base, os.environ.get("IS_USER", "admin"), os.environ.get("IS_PASSWORD", "admin"))
+s = IS(base, *credentials(base))
 s.wait_up()
 
 apps = s.get(f"/api/server/v1/applications?filter=name+eq+{app_name}")["applications"]

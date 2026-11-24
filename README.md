@@ -9,11 +9,12 @@ Python 3, bibliothèque standard uniquement.
 L'export et l'import sont séparés : chacun ne contacte qu'un seul serveur.
 
 ```bash
-export IS_USER=admin IS_PASSWORD='***'        # défaut : admin/admin
-
 ./api-migrate.py export https://is71.example:9443 bundle.json   # sur la 7.1
 ./api-migrate.py import bundle.json https://is73.example:9443   # sur la 7.3
 ```
+
+Utilisateur et mot de passe admin sont demandés à chaque exécution, avec un mot de passe masqué qui ne finit ni dans
+l'historique du shell ni dans les logs. Pour l'automatisation, `IS_USER` et `IS_PASSWORD` sont lus s'ils sont définis.
 
 L'import est idempotent : il crée ce qui manque, met à jour l'existant et peut être relancé sans effet de bord.
 Code retour non nul en cas d'erreur.
