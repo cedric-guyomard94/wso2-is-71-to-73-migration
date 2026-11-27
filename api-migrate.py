@@ -136,14 +136,17 @@ class Import:
 
     # ---------------------------------------------------------------- pré-requis
     def prerequisites(self):
-        have = {u["name"] for u in self.s.get(f"{API}/userstores")}
-        need = {m["userstore"] for c in self.b["local_claims"] for m in c.get("attributeMapping", [])
-                if m["userstore"].upper() != "PRIMARY"}
-        need |= {m["userstore"] for ms in self.b.get("system_claim_mappings", {}).values() for m in ms
-                 if m["userstore"].upper() != "PRIMARY"}
-        miss = sorted(need - have)
+        # Les mappings de claims portent le domaine en MAJUSCULES, l'API user stores le nom tel que saisi :
+        # comparaison insensible à la casse.
+        target = [u["name"] for u in self.s.get(f"{API}/userstores")]
+        have = {n.upper() for n in target}
+        need = {m["userstore"].upper() for c in self.b["local_claims"] for m in c.get("attributeMapping", [])}
+        need |= {m["userstore"].upper() for ms in self.b.get("system_claim_mappings", {}).values() for m in ms}
+        miss = sorted(need - have - {"PRIMARY"})
         if miss:
-            raise SystemExit(f"user store(s) absent(s) de la cible : {miss} -> lancez d'abord le playbook Ansible")
+            raise SystemExit(f"user store(s) référencé(s) par des mappings de claims mais absent(s) de la cible : {miss}\n"
+                             f"  user stores présents sur la cible : {sorted(target)}\n"
+                             f"  créez-les avant l'import (ex. playbook Ansible), sinon ces mappings ne peuvent pas être repris")
 
     # ---------------------------------------------------------------- claims
     def claims(self):
