@@ -84,6 +84,10 @@ def export(src_url, out):
         for p in d.get("inboundProtocols", []) or []:
             t = INBOUND.get(p["type"], p["type"])
             inbound[t] = s.get(f"{API}/applications/{a['id']}/inbound-protocols/{t}")
+        o = inbound.get("oidc")
+        if o and not o.get("clientSecret") and not o.get("publicClient"):
+            sys.stderr.write(f"  ! {a['name']} : client secret non renvoyé par l'API (secrets hachés ?), "
+                f"la cible en générera un nouveau\n")
         authz = [{"identifier": x["identifier"], "policyIdentifier": x.get("policyId", "RBAC"),
                   "scopes": [sc["name"] for sc in x.get("authorizedScopes", [])]}
                  for x in s.get(f"{API}/applications/{a['id']}/authorized-apis")]
@@ -299,6 +303,21 @@ class Import:
                 proto["oidc"] = {k: v for k, v in inbound["oidc"].items() if k not in ("state",)}
             if "saml" in inbound:
                 proto["saml"] = {"manualConfiguration": inbound["saml"]}
+            if name in cur and "oidc" in proto:
+                # La 7.3 refuse de modifier clientId / clientSecret d'une app existante (400 « Invalid ClientID/
+                # ClientSecret provided for update ») : si ses identifiants diffèrent du bundle, on la recrée.
+                tgt = s.get(f"{API}/applications/{cur[name]['id']}/inbound-protocols/oidc")
+                diff = [f for f in ("clientId", "clientSecret")
+                        if proto["oidc"].get(f) and tgt.get(f) != proto["oidc"].get(f)]
+                if diff:
+                    def drop(aid=cur[name]["id"], diff=diff):
+                        s.delete(f"{API}/applications/{aid}")
+                        del cur[name]
+                        self.ok("applications", "supprimée (identifiants OAuth différents)")
+                        self.warnings.append(f"app {name} recréée ({', '.join(diff)} différent sur la cible) : "
+                                             f"nouvel id, ses rôles d'app sont recréés mais leurs affectations "
+                                             f"utilisateurs/groupes sur la cible sont perdues")
+                    self.run("app", name, drop)
             if name not in cur:
                 def create():
                     s.post(f"{API}/applications", {**app, "inboundProtocolConfiguration": proto})
